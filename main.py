@@ -161,16 +161,31 @@ def save_to_pdf(text: str, output_path: str, subject_name: str = "Subject Name",
             
     pdf.output(output_path)
 
-# ------------------ FIREBASE INIT (LOCAL) ------------------
+# ------------------ FIREBASE INIT ------------------
 
-# Path to your Firebase service account JSON file
-FIREBASE_CRED_PATH = "firebase_service_account.json"
+import json
 
-cred = credentials.Certificate(FIREBASE_CRED_PATH)
+# Try to load credentials from environment variable first
+firebase_env = os.environ.get("FIREBASE_CREDENTIALS")
+
+if firebase_env:
+    try:
+        cred_dict = json.loads(firebase_env)
+        cred = credentials.Certificate(cred_dict)
+    except json.JSONDecodeError:
+        raise ValueError("FIREBASE_CREDENTIALS environment variable is not valid JSON.")
+else:
+    # Fallback to local file for development
+    FIREBASE_CRED_PATH = "firebase_service_account.json"
+    if not os.path.exists(FIREBASE_CRED_PATH):
+        raise FileNotFoundError("Firebase credentials not found. Please set FIREBASE_CREDENTIALS env var or provide firebase_service_account.json locally.")
+    cred = credentials.Certificate(FIREBASE_CRED_PATH)
+
 firebase_admin.initialize_app(cred)
 
 # Firebase Web API Key (from Firebase Console -> Project Settings)
-FIREBASE_API_KEY = "AIzaSyDtg5QnBX51PIR4Mt_LyHArblCxiWJA8kg"
+# You could also make this an environment variable: os.environ.get("FIREBASE_API_KEY", "your_api_key")
+FIREBASE_API_KEY = os.environ.get("FIREBASE_API_KEY", "AIzaSyDtg5QnBX51PIR4Mt_LyHArblCxiWJA8kg")
 
 
 # ------------------ HELPERS ------------------
