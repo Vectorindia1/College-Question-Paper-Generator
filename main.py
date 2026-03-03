@@ -74,6 +74,13 @@ def init_db():
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            uid TEXT PRIMARY KEY,
+            api_key TEXT
+        )
+    ''')
     conn.commit()
     conn.close()
 
@@ -87,6 +94,14 @@ def log_action(user_email, action, paper_id=None):
               (user_email, action, paper_id))
     conn.commit()
     conn.close()
+
+def get_user_api_key(uid):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT api_key FROM users WHERE uid = ?", (uid,))
+    result = c.fetchone()
+    conn.close()
+    return result[0] if result and result[0] else None
 
 def save_to_pdf(text: str, output_path: str, subject_name: str = "Subject Name", exam_format: str = "End-Semester"):
     pdf = FPDF()
@@ -247,9 +262,14 @@ def inject_nav_context():
 @app.route("/api/models")
 def api_models():
     if "user" not in session:
-        return {"models": []}, 401
+        return jsonify({"models": []}), 401
+    uid = session.get("uid")
+    api_key = get_user_api_key(uid)
+    if not api_key:
+        return jsonify({"models": []})
+    
     from llm_client import get_available_models
-    return {"models": get_available_models()}
+    return jsonify({"models": get_available_models(api_key)})
 
 # ------------------ ROUTES ------------------
 
@@ -264,6 +284,31 @@ def home():
         return redirect(url_for("admin_dashboard"))
 
     return redirect(url_for("upload"))
+
+@app.route("/settings", methods=["GET", "POST"])
+def settings():
+    if "user" not in session:
+        return redirect(url_for("login"))
+        
+    uid = session.get("uid")
+    message = None
+    success = False
+    
+    if request.method == "POST":
+        api_key = request.form.get("api_key", "").strip()
+        conn = sqlite3.connect(DB_NAME)
+        c = conn.cursor()
+        c.execute("INSERT INTO users (uid, api_key) VALUES (?, ?) ON CONFLICT(uid) DO UPDATE SET api_key=excluded.api_key", (uid, api_key))
+        conn.commit()
+        conn.close()
+        message = "Configuration saved securely."
+        success = True
+        
+    current_key = get_user_api_key(uid)
+    is_configured = current_key is not None and len(current_key) > 0
+    masked_key = f"{current_key[:8]}...{current_key[-4:]}" if is_configured and len(current_key) > 12 else ""
+        
+    return render_template("settings.html", is_configured=is_configured, masked_key=masked_key, message=message, success=success)
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -351,9 +396,12 @@ def upload():
             ''', (subject,))
             past_edits = c.fetchall()
             past_papers_text = "\n---\n".join([edit[0] for edit in past_edits]) if past_edits else ""
+            api_key = get_user_api_key(user_uid)
+            if not api_key:
+                return redirect(url_for("settings"))
 
             # Generation Execution
-            paper = generate_with_retries(raw, model_id=model_id, difficulty=difficulty, exam_format=exam_format, past_papers_text=past_papers_text)
+            paper = generate_with_retries(raw, api_key=api_key, model_id=model_id, difficulty=difficulty, exam_format=exam_format, past_papers_text=past_papers_text)
             
             # Create paper entry
             c.execute("INSERT INTO papers (user_uid, user_email, subject, filename, current_version, difficulty, exam_format, syllabus_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", 
@@ -513,9 +561,12 @@ def get_paper_analytics(paper_id):
         return jsonify({"error": "Paper content not found"}), 404
         
     paper_text = edit_record[0]
-    
+    api_key = get_user_api_key(user_uid)
+    if not api_key:
+        return jsonify({"error": "No API Key Configured. Please configure in settings."}), 400
+
     # Run the analysis
-    analytics_data = analyze_paper_quality(syllabus_text, paper_text)
+    analytics_data = analyze_paper_quality(syllabus_text, paper_text, api_key=api_key)
     
     return jsonify(analytics_data)
 

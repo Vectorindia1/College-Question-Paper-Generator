@@ -158,7 +158,7 @@ def extract_syllabus_window(raw_text: str) -> str:
 # QUESTION PAPER GENERATION
 # =========================
 
-def generate_question_paper(syllabus_window: str, retry_note: str = "", model_id: str = "mistralai/mistral-7b-instruct", difficulty: str="Medium", exam_format: str="End-Semester", past_papers_text: str="") -> str:
+def generate_question_paper(syllabus_window: str, api_key: str, retry_note: str = "", model_id: str = "mistralai/mistral-7b-instruct", difficulty: str="Medium", exam_format: str="End-Semester", past_papers_text: str="") -> str:
     
     # Customize instructions based on difficulty
     difficulty_instructions = ""
@@ -255,7 +255,7 @@ STRICTLY FORBIDDEN:
 - Emphasis symbols of any kind
 
 """
-    return generate_text(prompt, model_id=model_id)
+    return generate_text(prompt, api_key=api_key, model_id=model_id)
 
 
 # =========================
@@ -284,12 +284,12 @@ def validate_paper_structure(paper: str) -> list[str]:
 # RETRY ORCHESTRATION
 # =========================
 
-def generate_with_retries(raw_syllabus: str, model_id: str = "mistralai/mistral-7b-instruct", difficulty: str="Medium", exam_format: str="End-Semester", past_papers_text: str="") -> str:
+def generate_with_retries(raw_syllabus: str, api_key: str, model_id: str = "mistralai/mistral-7b-instruct", difficulty: str="Medium", exam_format: str="End-Semester", past_papers_text: str="") -> str:
     syllabus_window = extract_syllabus_window(raw_syllabus)
 
     retry_note = ""
     for attempt in range(1, MAX_ATTEMPTS + 1):
-        paper = generate_question_paper(syllabus_window, retry_note, model_id, difficulty, exam_format, past_papers_text)
+        paper = generate_question_paper(syllabus_window, api_key, retry_note, model_id, difficulty, exam_format, past_papers_text)
         violations = validate_paper_structure(paper)
 
         if not violations:
@@ -308,7 +308,7 @@ def generate_with_retries(raw_syllabus: str, model_id: str = "mistralai/mistral-
 # =========================
 import json
 
-def analyze_paper_quality(syllabus_text: str, paper_text: str, model_id: str = "mistralai/mistral-7b-instruct") -> dict:
+def analyze_paper_quality(syllabus_text: str, paper_text: str, api_key: str, model_id: str = "mistralai/mistral-7b-instruct") -> dict:
     prompt = f"""
 You are an expert academic evaluator. Your job is to analyze the generated exam paper against its provided syllabus and output ONLY a valid JSON object analyzing its quality.
 
@@ -331,7 +331,7 @@ Output EXACTLY AND ONLY this JSON format:
 }}
 """
     try:
-        response_text = generate_text(prompt, model_id=model_id)
+        response_text = generate_text(prompt, api_key=api_key, model_id=model_id)
         # Strip potential markdown blocks if the LLM adds them
         if "```json" in response_text:
             response_text = response_text.split("```json")[1].split("```")[0]
