@@ -101,7 +101,11 @@ def get_user_api_key(uid):
     c.execute("SELECT api_key FROM users WHERE uid = ?", (uid,))
     result = c.fetchone()
     conn.close()
-    return result[0] if result and result[0] else None
+    
+    # Return user key if exists, else return the global default API key
+    if result and result[0]:
+        return result[0]
+    return os.environ.get("OPENROUTER_API_KEY", "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")
 
 def save_to_pdf(text: str, output_path: str, subject_name: str = "Subject Name", exam_format: str = "End-Semester"):
     pdf = FPDF()
@@ -781,11 +785,17 @@ def papers_hub():
     if "user" not in session:
         return redirect(url_for("login"))
 
+    access = _refresh_session_access()
     conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
-    # Show all papers for everyone (as a shared 'Hub')
-    c.execute("SELECT * FROM papers ORDER BY id DESC")
+    
+    # Admins and Deans see all papers, Faculty see only their own
+    if access["is_admin"] or access["is_dean"]:
+        c.execute("SELECT * FROM papers ORDER BY id DESC")
+    else:
+        c.execute("SELECT * FROM papers WHERE user_uid = ? ORDER BY id DESC", (session.get("uid"),))
+        
     all_papers = c.fetchall()
     conn.close()
 
@@ -796,10 +806,17 @@ def view_logs():
     if "user" not in session:
         return redirect(url_for("login"))
 
+    access = _refresh_session_access()
     conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
-    c.execute("SELECT * FROM logs ORDER BY timestamp DESC LIMIT 500")
+    
+    # Admins and Deans see all activity logs, Faculty see only their own
+    if access["is_admin"] or access["is_dean"]:
+        c.execute("SELECT * FROM logs ORDER BY timestamp DESC LIMIT 500")
+    else:
+        c.execute("SELECT * FROM logs WHERE user_email = ? ORDER BY timestamp DESC LIMIT 500", (session.get("user"),))
+        
     logs = c.fetchall()
     conn.close()
 
