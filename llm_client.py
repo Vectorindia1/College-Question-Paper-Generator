@@ -6,7 +6,7 @@ PROVIDER = "OPENROUTER"
 
 def get_client(api_key: str) -> OpenAI:
     return OpenAI(
-        api_key=api_key,
+        api_key="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",
         base_url="https://openrouter.ai/api/v1"
     )
 

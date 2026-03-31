@@ -54,6 +54,11 @@ def init_db():
     except sqlite3.OperationalError:
         pass
 
+    try:
+        c.execute("ALTER TABLE papers ADD COLUMN subject TEXT")
+    except sqlite3.OperationalError:
+        pass
+
     c.execute('''
         CREATE TABLE IF NOT EXISTS edits (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -384,6 +389,8 @@ def upload():
 
     if request.method == "POST":
         file = request.files.get("syllabus")
+        user_uid = session.get("uid")
+        user_email = session.get("user")
 
         if not file or file.filename == "":
             return render_template("upload.html", error="No file selected")
@@ -727,9 +734,11 @@ def download(paper_id):
     output_path = os.path.join(OUTPUT_FOLDER, f"Question_Paper_{paper_id}.docx")
     
     # Fetch paper details for the header
-    c = sqlite3.connect(DB_NAME).cursor()
-    c.execute("SELECT subject, exam_format FROM papers WHERE id = ?", (paper_id,))
-    paper_metadata = c.fetchone()
+    conn2 = sqlite3.connect(DB_NAME)
+    c2 = conn2.cursor()
+    c2.execute("SELECT subject, exam_format FROM papers WHERE id = ?", (paper_id,))
+    paper_metadata = c2.fetchone()
+    conn2.close()
     subject_name = paper_metadata[0] if (paper_metadata and paper_metadata[0]) else "Subject"
     exam_format = paper_metadata[1] if (paper_metadata and paper_metadata[1]) else "End-Semester"
     
@@ -764,9 +773,11 @@ def download_pdf(paper_id):
     output_path = os.path.join(OUTPUT_FOLDER, f"Question_Paper_{paper_id}.pdf")
     
     # Fetch paper details for the header
-    c = sqlite3.connect(DB_NAME).cursor()
-    c.execute("SELECT subject, exam_format FROM papers WHERE id = ?", (paper_id,))
-    paper_metadata = c.fetchone()
+    conn2 = sqlite3.connect(DB_NAME)
+    c2 = conn2.cursor()
+    c2.execute("SELECT subject, exam_format FROM papers WHERE id = ?", (paper_id,))
+    paper_metadata = c2.fetchone()
+    conn2.close()
     subject_name = paper_metadata[0] if (paper_metadata and paper_metadata[0]) else "Subject"
     exam_format = paper_metadata[1] if (paper_metadata and paper_metadata[1]) else "End-Semester"
     

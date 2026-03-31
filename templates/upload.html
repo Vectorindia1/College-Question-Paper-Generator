@@ -229,13 +229,13 @@
     <div class="navbar">
         <div class="title">🏛️ Global University <span>Portal</span></div>
         <ul>
-            <li data-nav="all"><a href="/">Home</a></li>
-            <li data-nav="auth"><a href="/upload">Upload Syllabus</a></li>
-            <li data-nav="manage"><a href="/admin">Manage Users</a></li>
-            <li data-nav="auth"><a href="/download">Download Paper</a></li>
-            <li data-nav="guest"><a href="/login">Login</a></li>
-            <li data-nav="guest"><a href="/signup">Sign Up</a></li>
-            <li data-nav="auth"><a href="/logout">Logout</a></li>
+            <li><a href="/papers">Papers Hub</a></li>
+            <li><a href="/upload">Upload</a></li>
+            <li><a href="/logs">Activity Logs</a></li>
+            {% if nav_can_manage_users %}
+            <li><a href="/admin">Manage Users</a></li>
+            {% endif %}
+            <li><a href="/logout">Logout</a></li>
         </ul>
     </div>
 
