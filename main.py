@@ -110,7 +110,7 @@ def get_user_api_key(uid):
     # Return user key if exists, else return the global default API key
     if result and result[0]:
         return result[0]
-    return os.environ.get("OPENROUTER_API_KEY", "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")
+    return os.environ.get("OPENROUTER_API_KEY")
 
 def save_to_pdf(text: str, output_path: str, subject_name: str = "Subject Name", exam_format: str = "End-Semester"):
     pdf = FPDF()
@@ -194,7 +194,7 @@ firebase_admin.initialize_app(cred)
 
 # Firebase Web API Key (from Firebase Console -> Project Settings)
 # You could also make this an environment variable: os.environ.get("FIREBASE_API_KEY", "your_api_key")
-FIREBASE_API_KEY = os.environ.get("FIREBASE_API_KEY", "AIzaSyDtg5QnBX51PIR4Mt_LyHArblCxiWJA8kg")
+FIREBASE_API_KEY = os.environ.get("FIREBASE_API_KEY")
 
 
 # ------------------ HELPERS ------------------
